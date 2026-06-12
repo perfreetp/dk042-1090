@@ -15,7 +15,8 @@ const GroupsPage: React.FC = () => {
     runInspection,
     addApiConfig,
     updateApiConfig,
-    deleteApiConfig
+    deleteApiConfig,
+    inspecting
   } = useInspection();
 
   const [activeGroup, setActiveGroup] = useState<string>('all');
@@ -52,8 +53,24 @@ const GroupsPage: React.FC = () => {
 
   const handleInspectApi = async (api: ApiConfig) => {
     console.log('[GroupsPage] Inspecting API:', api.id);
-    await runInspection(api.id);
+    await runInspection({ apiId: api.id });
     showToast(`${api.name} 巡检完成`, 'success');
+  };
+
+  const handleInspectGroup = async (groupId: string, groupName: string) => {
+    if (inspecting) {
+      showToast('正在巡检中...');
+      return;
+    }
+    const groupApis = apiConfigs.filter(a => a.groupId === groupId);
+    if (groupApis.length === 0) {
+      showToast('该分组暂无接口');
+      return;
+    }
+    console.log('[GroupsPage] Batch inspecting group:', groupId);
+    showToast(`正在巡检 ${groupApis.length} 个接口...`, 'loading', 1500);
+    await runInspection({ groupId });
+    showToast(`${groupName} 巡检完成`, 'success');
   };
 
   const handleApiClick = (api: ApiConfig) => {
@@ -342,6 +359,23 @@ const GroupsPage: React.FC = () => {
                   <Text style={{ color: '#f53f3f' }}>✕ 失败 {failedCount}</Text>
                 </View>
                 <View style={{ display: 'flex', gap: '16rpx', alignItems: 'center' }}>
+                  <View
+                    className={styles.actionBtn}
+                    style={{
+                      flex: 'none',
+                      height: '48rpx',
+                      padding: '0 20rpx',
+                      background: 'linear-gradient(135deg, #165dff 0%, #4080ff 100%)',
+                      color: '#ffffff',
+                      fontSize: '22rpx',
+                      fontWeight: 600,
+                      borderRadius: '16rpx',
+                      boxShadow: '0 2rpx 8rpx rgba(22,93,255,0.25)'
+                    }}
+                    onClick={(e) => { e.stopPropagation?.(); handleInspectGroup(group.id, group.name); }}
+                  >
+                    🚀 批量巡检
+                  </View>
                   <View
                     className={styles.actionBtn}
                     style={{

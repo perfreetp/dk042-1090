@@ -1,11 +1,19 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { View, Text, Input, Button, ScrollView } from '@tarojs/components';
-import Taro, { useRouter } from '@tarojs/taro';
+import Taro, { useRouter, useDidShow } from '@tarojs/taro';
 import classnames from 'classnames';
 import { useInspection } from '@/store/InspectionContext';
 import { getStatusText, formatDuration, formatDate, showToast, copyToClipboard } from '@/utils';
 import { ApiConfig, ApiParam, ApiExpectedField, InspectionResult, HttpMethod, ApiStatus } from '@/types';
 import styles from './index.module.scss';
+
+const OPERATORS: Array<{ key: ApiExpectedField['operator']; label: string }> = [
+  { key: 'equals', label: '等于' },
+  { key: 'notEmpty', label: '非空' },
+  { key: 'contains', label: '包含' },
+  { key: 'greaterThan', label: '大于' },
+  { key: 'lessThan', label: '小于' }
+];
 
 const DebugPage: React.FC = () => {
   const router = useRouter();
@@ -21,12 +29,47 @@ const DebugPage: React.FC = () => {
   const [expectedFields, setExpectedFields] = useState<ApiExpectedField[]>(
     api?.expectedFields || []
   );
+
   const [lastResult, setLastResult] = useState<InspectionResult | null>(() => {
     if (apiId) {
-      return inspectionResults.find(r => r.apiId === apiId) || null;
+      const sorted = [...inspectionResults]
+        .filter(r => r.apiId === apiId)
+        .sort((a, b) => new Date(b.checkedAt).getTime() - new Date(a.checkedAt).getTime());
+      return sorted[0] || null;
     }
     return null;
   });
+
+  useDidShow(() => {
+    if (apiId) {
+      const sorted = [...inspectionResults]
+        .filter(r => r.apiId === apiId)
+        .sort((a, b) => new Date(b.checkedAt).getTime() - new Date(a.checkedAt).getTime());
+      if (sorted[0]) {
+        console.log('[DebugPage] useDidShow found latest result:', sorted[0].status, sorted[0].checkedAt);
+        setLastResult(sorted[0]);
+      }
+    }
+  });
+
+  useEffect(() => {
+    if (!apiId) return;
+    const sorted = [...inspectionResults]
+      .filter(r => r.apiId === apiId)
+      .sort((a, b) => new Date(b.checkedAt).getTime() - new Date(a.checkedAt).getTime());
+    if (sorted[0]) {
+      console.log('[DebugPage] useEffect inspectionResults updated latest:', sorted[0].status, sorted[0].checkedAt);
+      setLastResult(sorted[0]);
+    }
+  }, [apiId, inspectionResults]);
+
+  useEffect(() => {
+    if (api) {
+      setExpectedStatusCode(api.expectedStatusCode?.toString() || '200');
+      setParams(api.params || []);
+      setExpectedFields(api.expectedFields || []);
+    }
+  }, [api?.id]);
 
   if (!api) {
     return (
@@ -39,10 +82,10 @@ const DebugPage: React.FC = () => {
   const handleRunInspect = async () => {
     console.log('[DebugPage] Running inspection for:', api.id);
     showToast('开始巡检...', 'loading', 1000);
-    const newResults = await runInspection(api.id);
+    const newResults = await runInspection({ apiId: api.id });
     const latestResult = newResults.find(r => r.apiId === api.id);
     if (latestResult) {
-      console.log('[DebugPage] Updating lastResult with new inspection:', latestResult.status, latestResult.duration);
+      console.log('[DebugPage] Updating lastResult with new inspection:', latestResult.status, latestResult.duration, 'fieldValidations:', latestResult.fieldValidations?.length);
       setLastResult(latestResult);
     }
     showToast('巡检完成', 'success');
@@ -157,12 +200,17 @@ const DebugPage: React.FC = () => {
                 {lastResult.fieldValidations.map((v, i) => (
                   <View key={i} className={styles.validationItem}>
                     <Text className={styles.validationField}>字段 {v.field}</Text>
-                    <Text className={classnames(styles.validationResult, {
-                      [styles.validPass]: v.passed,
-                      [styles.validFail]: !v.passed
-                    })}>
-                      {v.passed ? '通过 ✓' : `失败 ✕ (期望 ${v.expected})`}
-                    </Text>
+                    <View>
+                      <Text className={classnames(styles.validationResult, {
+                        [styles.validPass]: v.passed,
+                        [styles.validFail]: !v.passed
+                      })}>
+                        {v.passed ? '通过 ✓' : '失败 ✕'}
+                      </Text>
+                      <Text style={{ fontSize: '22rpx', color: '#86909c', marginTop: '4rpx', display: 'block' }}>
+                        期望: {v.expected} / 实际: {v.actual}
+                      </Text>
+                    </View>
                   </View>
                 ))}
               </View>
@@ -247,10 +295,19 @@ const DebugPage: React.FC = () => {
                 value={field.field}
                 onInput={(e) => updateExpectedField(index, 'field', e.detail.value)}
               />
-              <View className={styles.selectWrapper} style={{ flex: '0 0 120rpx' }}>
-                <View className={classnames(styles.optionBtn, styles.optionActive)}>
-                  {field.operator === 'equals' ? '等于' : field.operator === 'notEmpty' ? '非空' : '包含'}
-                </View>
+              <View className={styles.selectWrapper} style={{ flex: '0 0 auto', flexWrap: 'wrap', gap: '8rpx' }}>
+                {OPERATORS.map(op => (
+                  <View
+                    key={op.key}
+                    className={classnames(styles.optionBtn, {
+                      [styles.optionActive]: field.operator === op.key
+                    })}
+                    style={{ height: '48rpx', padding: '0 12rpx', fontSize: '22rpx', minWidth: '56rpx' }}
+                    onClick={() => updateExpectedField(index, 'operator', op.key)}
+                  >
+                    {op.label}
+                  </View>
+                ))}
               </View>
               <Input
                 className={classnames(styles.paramInput, styles.paramValue)}

@@ -1,5 +1,5 @@
-import React, { useState, useMemo } from 'react';
-import { View, Text, ScrollView, Textarea } from '@tarojs/components';
+import React, { useState, useMemo, useCallback } from 'react';
+import { View, Text, ScrollView, Textarea, Input } from '@tarojs/components';
 import Taro, { usePullDownRefresh } from '@tarojs/taro';
 import classnames from 'classnames';
 import { useInspection } from '@/store/InspectionContext';
@@ -8,12 +8,35 @@ import { showToast } from '@/utils';
 import { AlertRecord } from '@/types';
 import styles from './index.module.scss';
 
+type HandledFilter = 'all' | 'pending' | 'handled';
+
 const AlertsPage: React.FC = () => {
-  const { alertRecords, retryAlert, updateAlertRemark, runInspection } = useInspection();
+  const { alertRecords, retryAlert, updateAlertRemark, markAlertHandled, apiConfigs, apiGroups } = useInspection();
   const [filterType, setFilterType] = useState<string>('all');
+  const [handledFilter, setHandledFilter] = useState<HandledFilter>('all');
+  const [searchKeyword, setSearchKeyword] = useState('');
   const [showRemarkModal, setShowRemarkModal] = useState(false);
   const [currentAlert, setCurrentAlert] = useState<AlertRecord | null>(null);
   const [remarkText, setRemarkText] = useState('');
+
+  const getApiInfoByAlert = useCallback((alert: AlertRecord) => {
+    const api = apiConfigs.find(a => a.id === alert.apiId);
+    const group = api ? apiGroups.find(g => g.id === api.groupId) : undefined;
+    return { api, group };
+  }, [apiConfigs, apiGroups]);
+
+  const matchSearch = useCallback((alert: AlertRecord): boolean => {
+    if (!searchKeyword.trim()) return true;
+    const kw = searchKeyword.trim().toLowerCase();
+    const { api, group } = getApiInfoByAlert(alert);
+    return (
+      (api?.name || '').toLowerCase().includes(kw) ||
+      (api?.url || '').toLowerCase().includes(kw) ||
+      (group?.name || '').toLowerCase().includes(kw) ||
+      (alert.remark || '').toLowerCase().includes(kw) ||
+      (alert.message || '').toLowerCase().includes(kw)
+    );
+  }, [searchKeyword, getApiInfoByAlert]);
 
   usePullDownRefresh(() => {
     Taro.stopPullDownRefresh();
@@ -63,19 +86,32 @@ const AlertsPage: React.FC = () => {
     showToast('全部重试完成', 'success');
   };
 
+  const handleMarkHandled = (alert: AlertRecord) => {
+    console.log('[AlertsPage] Marking alert handled:', alert.id);
+    markAlertHandled(alert.id);
+    showToast('已标记为处理中', 'success');
+  };
+
   const filteredAlerts = useMemo(() => {
-    if (filterType === 'all') return alertRecords;
-    if (filterType === 'failed') return alertRecords.filter(a => a.status === 'failed');
-    if (filterType === 'warning') return alertRecords.filter(a => a.status === 'warning');
-    if (filterType === 'consecutive') return alertRecords.filter(a => a.consecutiveFailures >= 2);
-    return alertRecords;
-  }, [alertRecords, filterType]);
+    let list = alertRecords;
+    if (filterType === 'failed') list = list.filter(a => a.status === 'failed');
+    else if (filterType === 'warning') list = list.filter(a => a.status === 'warning');
+    else if (filterType === 'consecutive') list = list.filter(a => a.consecutiveFailures >= 2);
+
+    if (handledFilter === 'pending') list = list.filter(a => !a.handled);
+    else if (handledFilter === 'handled') list = list.filter(a => a.handled);
+
+    list = list.filter(matchSearch);
+    return list;
+  }, [alertRecords, filterType, handledFilter, matchSearch]);
 
   const stats = useMemo(() => {
     const failed = alertRecords.filter(a => a.status === 'failed').length;
     const warning = alertRecords.filter(a => a.status === 'warning').length;
     const consecutive = alertRecords.filter(a => a.consecutiveFailures >= 3).length;
-    return { failed, warning, consecutive };
+    const pending = alertRecords.filter(a => !a.handled).length;
+    const handled = alertRecords.filter(a => a.handled).length;
+    return { failed, warning, consecutive, pending, handled };
   }, [alertRecords]);
 
   const highRiskAlerts = useMemo(() => {
@@ -92,8 +128,48 @@ const AlertsPage: React.FC = () => {
         <View className={styles.header}>
           <Text className={styles.title}>告警记录</Text>
           <Text className={styles.subtitle}>
-            共 {alertRecords.length} 条告警 · 点击重试或添加备注
+            共 {alertRecords.length} 条告警 · 待处理 {stats.pending} · 已处理 {stats.handled}
           </Text>
+        </View>
+
+        <View className={styles.searchBox}>
+          <Text className={styles.searchIcon}>🔍</Text>
+          <Input
+            className={styles.searchInput}
+            placeholder="搜索接口名/分组/备注..."
+            value={searchKeyword}
+            onInput={(e) => setSearchKeyword(e.detail.value)}
+          />
+          {searchKeyword && (
+            <Text className={styles.searchClear} onClick={() => setSearchKeyword('')}>×</Text>
+          )}
+        </View>
+
+        <View className={styles.handledFilterBar}>
+          <View
+            className={classnames(styles.handledFilterItem, {
+              [styles.handledFilterActive]: handledFilter === 'all'
+            })}
+            onClick={() => setHandledFilter('all')}
+          >
+            全部 ({alertRecords.length})
+          </View>
+          <View
+            className={classnames(styles.handledFilterItem, {
+              [styles.handledFilterPending]: handledFilter === 'pending'
+            })}
+            onClick={() => setHandledFilter('pending')}
+          >
+            待处理 ({stats.pending})
+          </View>
+          <View
+            className={classnames(styles.handledFilterItem, {
+              [styles.handledFilterDone]: handledFilter === 'handled'
+            })}
+            onClick={() => setHandledFilter('handled')}
+          >
+            已处理 ({stats.handled})
+          </View>
         </View>
 
         {stats.consecutive > 0 && (
@@ -178,28 +254,40 @@ const AlertsPage: React.FC = () => {
             {highRiskAlerts.length > 0 && (
               <View style={{ marginBottom: '32rpx' }}>
                 <Text className={styles.sectionTitle}>高优先级（连续失败≥3次）</Text>
-                {highRiskAlerts.map(alert => (
-                  <AlertItemCard
-                    key={alert.id}
-                    alert={alert}
-                    onRetry={handleRetry}
-                    onAddRemark={handleAddRemark}
-                  />
-                ))}
+                {highRiskAlerts.map(alert => {
+                  const { api, group } = getApiInfoByAlert(alert);
+                  return (
+                    <AlertItemCard
+                      key={alert.id}
+                      alert={alert}
+                      apiName={api?.name}
+                      groupName={group?.name}
+                      onRetry={handleRetry}
+                      onAddRemark={handleAddRemark}
+                      onMarkHandled={handleMarkHandled}
+                    />
+                  );
+                })}
               </View>
             )}
 
             {normalAlerts.length > 0 && (
               <View>
                 <Text className={styles.sectionTitle}>普通告警</Text>
-                {normalAlerts.map(alert => (
-                  <AlertItemCard
-                    key={alert.id}
-                    alert={alert}
-                    onRetry={handleRetry}
-                    onAddRemark={handleAddRemark}
-                  />
-                ))}
+                {normalAlerts.map(alert => {
+                  const { api, group } = getApiInfoByAlert(alert);
+                  return (
+                    <AlertItemCard
+                      key={alert.id}
+                      alert={alert}
+                      apiName={api?.name}
+                      groupName={group?.name}
+                      onRetry={handleRetry}
+                      onAddRemark={handleAddRemark}
+                      onMarkHandled={handleMarkHandled}
+                    />
+                  );
+                })}
               </View>
             )}
           </View>

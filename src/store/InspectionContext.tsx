@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useCallback, ReactNode, useEffect } from 'react';
 import Taro from '@tarojs/taro';
-import { ApiConfig, ApiGroup, InspectionResult, AlertRecord, InspectionReport, ApiStatus } from '@/types';
+import { ApiConfig, ApiGroup, InspectionResult, AlertRecord, InspectionReport, ApiStatus, ApiExpectedField, AlertType } from '@/types';
 import {
   mockApiConfigs,
   mockApiGroups,
@@ -43,9 +43,10 @@ interface InspectionContextValue {
   alertRecords: AlertRecord[];
   dailyReport: InspectionReport;
   inspecting: boolean;
-  runInspection: (apiId?: string) => Promise<InspectionResult[]>;
+  runInspection: (target?: { apiId?: string; groupId?: string }) => Promise<InspectionResult[]>;
   retryAlert: (alertId: string) => Promise<void>;
   updateAlertRemark: (alertId: string, remark: string) => void;
+  markAlertHandled: (alertId: string) => void;
   updateApiConfig: (config: ApiConfig) => void;
   addApiConfig: (config: Omit<ApiConfig, 'id' | 'createdAt' | 'consecutiveFailures'>) => void;
   deleteApiConfig: (apiId: string) => void;
@@ -86,6 +87,80 @@ export const InspectionProvider: React.FC<{ children: ReactNode }> = ({ children
     saveToStorage(STORAGE_KEYS.DAILY_REPORT, dailyReport);
   }, [dailyReport]);
 
+  const runFieldValidations = useCallback((
+    expectedFields: ApiExpectedField[] | undefined,
+    isRequestFailed: boolean
+  ): { fieldValidations: InspectionResult['fieldValidations']; allPassed: boolean } => {
+    if (!expectedFields || expectedFields.length === 0) {
+      return { fieldValidations: undefined, allPassed: true };
+    }
+
+    const fieldValidations: InspectionResult['fieldValidations'] = [];
+    let allPassed = true;
+
+    expectedFields.forEach(fieldRule => {
+      if (!fieldRule.field) return;
+
+      let passed: boolean;
+      let actualValue: string;
+
+      if (isRequestFailed) {
+        passed = false;
+        actualValue = 'N/A (request failed)';
+      } else {
+        const random = Math.random();
+        if (fieldRule.operator === 'notEmpty') {
+          passed = random < 0.9;
+          actualValue = passed ? `mock_${Math.random().toString(36).slice(2, 8)}` : '';
+        } else if (fieldRule.operator === 'equals') {
+          passed = random < 0.85;
+          actualValue = passed ? fieldRule.expectedValue : `wrong_${Math.floor(Math.random() * 100)}`;
+        } else if (fieldRule.operator === 'contains') {
+          passed = random < 0.85;
+          actualValue = passed
+            ? `prefix_${fieldRule.expectedValue}_suffix`
+            : `value_without_expected_${Math.floor(Math.random() * 100)}`;
+        } else if (fieldRule.operator === 'greaterThan') {
+          const expectedNum = parseFloat(fieldRule.expectedValue) || 0;
+          passed = random < 0.85;
+          actualValue = passed
+            ? (expectedNum + Math.random() * 100).toFixed(2)
+            : (expectedNum - Math.random() * 10 - 1).toFixed(2);
+        } else if (fieldRule.operator === 'lessThan') {
+          const expectedNum = parseFloat(fieldRule.expectedValue) || 100;
+          passed = random < 0.85;
+          actualValue = passed
+            ? (expectedNum - Math.random() * 10 - 1).toFixed(2)
+            : (expectedNum + Math.random() * 100).toFixed(2);
+        } else {
+          passed = true;
+          actualValue = fieldRule.expectedValue;
+        }
+      }
+
+      if (!passed) allPassed = false;
+
+      const expectedDisplay = fieldRule.operator === 'notEmpty'
+        ? 'not empty'
+        : fieldRule.operator === 'equals'
+          ? fieldRule.expectedValue
+          : fieldRule.operator === 'contains'
+            ? `contains "${fieldRule.expectedValue}"`
+            : fieldRule.operator === 'greaterThan'
+              ? `> ${fieldRule.expectedValue}`
+              : `< ${fieldRule.expectedValue}`;
+
+      fieldValidations.push({
+        field: fieldRule.field,
+        passed,
+        expected: expectedDisplay,
+        actual: actualValue
+      });
+    });
+
+    return { fieldValidations, allPassed };
+  }, []);
+
   const simulateInspection = useCallback((api: ApiConfig): InspectionResult => {
     const random = Math.random();
     let status: ApiStatus;
@@ -113,6 +188,14 @@ export const InspectionProvider: React.FC<{ children: ReactNode }> = ({ children
       duration = 1500 + Math.floor(Math.random() * 2000);
     }
 
+    const isRequestFailed = status === 'failed' || actualStatusCode !== api.expectedStatusCode;
+    const { fieldValidations, allPassed } = runFieldValidations(api.expectedFields, isRequestFailed);
+
+    if (!isRequestFailed && fieldValidations && !allPassed) {
+      status = 'warning';
+      errorMessage = '部分字段校验未通过';
+    }
+
     return {
       id: `result-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
       apiId: api.id,
@@ -124,19 +207,32 @@ export const InspectionProvider: React.FC<{ children: ReactNode }> = ({ children
       status,
       errorMessage,
       checkedAt: new Date().toISOString(),
-      fieldValidations: status === 'success' || status === 'warning' ? [
-        { field: 'code', passed: true, expected: '0', actual: '0' }
-      ] : undefined
+      fieldValidations
     };
-  }, []);
+  }, [runFieldValidations]);
 
-  const runInspection = useCallback(async (apiId?: string): Promise<InspectionResult[]> => {
+  const runInspection = useCallback(async (
+    target?: { apiId?: string; groupId?: string }
+  ): Promise<InspectionResult[]> => {
+    const { apiId, groupId } = target || {};
     setInspecting(true);
-    console.log('[Inspection] Starting inspection', apiId ? `for API: ${apiId}` : 'for all APIs');
+
+    let scopeLog = 'for all APIs';
+    if (apiId) scopeLog = `for API: ${apiId}`;
+    else if (groupId) scopeLog = `for group: ${groupId}`;
+    console.log('[Inspection] Starting inspection', scopeLog);
 
     await new Promise(resolve => setTimeout(resolve, 1000));
 
-    const targetApis = apiId ? apiConfigs.filter(a => a.id === apiId) : apiConfigs;
+    let targetApis: ApiConfig[];
+    if (apiId) {
+      targetApis = apiConfigs.filter(a => a.id === apiId);
+    } else if (groupId) {
+      targetApis = apiConfigs.filter(a => a.groupId === groupId);
+    } else {
+      targetApis = apiConfigs;
+    }
+
     const newResults: InspectionResult[] = [];
     const newAlerts: AlertRecord[] = [];
     const updatedConfigs: ApiConfig[] = [...apiConfigs];
@@ -162,17 +258,33 @@ export const InspectionProvider: React.FC<{ children: ReactNode }> = ({ children
 
       if (result.status === 'failed' || result.status === 'warning') {
         const apiConfig = updatedConfigs.find(a => a.id === api.id);
+        let alertType: AlertType = 'timeout';
+        if (result.actualStatusCode !== result.statusCode) {
+          alertType = 'status_code';
+        } else if (result.fieldValidations && result.fieldValidations.some(f => !f.passed)) {
+          alertType = 'field_mismatch';
+        } else if (result.duration > 2000) {
+          alertType = 'timeout';
+        }
+        if ((apiConfig?.consecutiveFailures || 0) >= 3) {
+          alertType = 'consecutive_failures';
+        }
+        const errorMsg = result.errorMessage || '响应时间超过阈值';
         newAlerts.push({
           id: `alert-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
           apiId: api.id,
           apiName: api.name,
           apiUrl: api.url,
           groupName: api.groupName,
+          type: alertType,
+          message: errorMsg,
           status: result.status,
-          errorMessage: result.errorMessage || '响应时间超过阈值',
+          errorMessage: errorMsg,
           duration: result.duration,
           checkedAt: result.checkedAt,
-          consecutiveFailures: apiConfig?.consecutiveFailures || 0
+          triggeredAt: result.checkedAt,
+          consecutiveFailures: apiConfig?.consecutiveFailures || 0,
+          handled: false
         });
       }
     });
@@ -187,25 +299,32 @@ export const InspectionProvider: React.FC<{ children: ReactNode }> = ({ children
       const warningCount = newResults.filter(r => r.status === 'warning').length;
       const avgDuration = Math.round(newResults.reduce((s, r) => s + r.duration, 0) / newResults.length);
 
-      setDailyReport({
+      const allResults = !groupId
+        ? newResults
+        : [...newResults, ...dailyReport.results.filter(r => !newResults.find(nr => nr.apiId === r.apiId))];
+
+      const totalCount = allResults.length || 1;
+      const totalSuccess = allResults.filter(r => r.status === 'success').length;
+
+      setDailyReport(prev => ({
         id: `report-${Date.now()}`,
         date: new Date().toISOString().slice(0, 10),
-        totalApis: newResults.length,
-        successCount,
-        failedCount,
-        warningCount,
-        successRate: Number(((successCount / newResults.length) * 100).toFixed(1)),
-        avgDuration,
+        totalApis: totalCount,
+        successCount: totalSuccess,
+        failedCount: allResults.filter(r => r.status === 'failed').length,
+        warningCount: allResults.filter(r => r.status === 'warning').length,
+        successRate: Number(((totalSuccess / totalCount) * 100).toFixed(1)),
+        avgDuration: Math.round(allResults.reduce((s, r) => s + r.duration, 0) / totalCount),
         businessLine: '全部业务线',
-        results: newResults,
+        results: allResults,
         generatedAt: new Date().toISOString()
-      });
+      }));
     }
 
     console.log('[Inspection] Completed', newResults.length, 'results');
     setInspecting(false);
     return newResults;
-  }, [apiConfigs, simulateInspection]);
+  }, [apiConfigs, simulateInspection, dailyReport.results]);
 
   const retryAlert = useCallback(async (alertId: string) => {
     console.log('[Inspection] Retrying alert:', alertId);
@@ -259,6 +378,13 @@ export const InspectionProvider: React.FC<{ children: ReactNode }> = ({ children
     ));
   }, []);
 
+  const markAlertHandled = useCallback((alertId: string) => {
+    console.log('[Inspection] Marking alert as handled:', alertId);
+    setAlertRecords(prev => prev.map(a =>
+      a.id === alertId ? { ...a, handled: true, handledAt: new Date().toISOString() } : a
+    ));
+  }, []);
+
   const updateApiConfig = useCallback((config: ApiConfig) => {
     console.log('[Inspection] Updating API config:', config.id);
     setApiConfigs(prev => prev.map(a => a.id === config.id ? config : a));
@@ -298,6 +424,7 @@ export const InspectionProvider: React.FC<{ children: ReactNode }> = ({ children
         runInspection,
         retryAlert,
         updateAlertRemark,
+        markAlertHandled,
         updateApiConfig,
         addApiConfig,
         deleteApiConfig,

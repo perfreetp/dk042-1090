@@ -1,5 +1,7 @@
 export type ApiStatus = 'success' | 'failed' | 'warning' | 'pending' | 'unknown';
 
+export type AlertType = 'status_code' | 'timeout' | 'field_mismatch' | 'network_error' | 'consecutive_failures';
+
 export type HttpMethod = 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH';
 
 export interface ApiParam {
@@ -83,11 +85,16 @@ export interface AlertRecord {
   apiName: string;
   apiUrl: string;
   groupName: string;
+  type: AlertType;
+  message: string;
   status: ApiStatus;
   errorMessage: string;
   duration: number;
   checkedAt: string;
+  triggeredAt: string;
   remark?: string;
   consecutiveFailures: number;
   isRetrying?: boolean;
+  handled?: boolean;
+  handledAt?: string;
 }

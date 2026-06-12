@@ -242,3 +242,77 @@
     transform: scale(0.98);
   }
 }
+
+.searchBox {
+  display: flex;
+  align-items: center;
+  gap: $spacing-sm;
+  background: $color-bg-card;
+  border-radius: $radius-button;
+  padding: $spacing-sm $spacing-md;
+  box-shadow: $shadow-card;
+  margin-bottom: $spacing-md;
+}
+
+.searchIcon {
+  font-size: $font-size-lg;
+  flex-shrink: 0;
+}
+
+.searchInput {
+  flex: 1;
+  font-size: $font-size-sm;
+  color: $color-text-primary;
+  background: transparent;
+  border: none;
+  outline: none;
+  padding: 0;
+  height: 56rpx;
+  line-height: 56rpx;
+}
+
+.searchClear {
+  flex-shrink: 0;
+  width: 40rpx;
+  height: 40rpx;
+  line-height: 36rpx;
+  text-align: center;
+  border-radius: 50%;
+  background: $color-bg-hover;
+  color: $color-text-tertiary;
+  font-size: $font-size-md;
+}
+
+.handledFilterBar {
+  display: flex;
+  gap: $spacing-sm;
+  margin-bottom: $spacing-md;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+}
+
+.handledFilterItem {
+  flex-shrink: 0;
+  padding: 12rpx 28rpx;
+  border-radius: $radius-button;
+  font-size: $font-size-sm;
+  background: $color-bg-card;
+  color: $color-text-secondary;
+  box-shadow: $shadow-card;
+  transition: all $transition-base;
+}
+
+.handledFilterActive {
+  background: $color-primary;
+  color: $color-text-white;
+}
+
+.handledFilterPending {
+  background: $color-error;
+  color: $color-text-white;
+}
+
+.handledFilterDone {
+  background: $color-success;
+  color: $color-text-white;
+}

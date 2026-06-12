@@ -263,10 +263,13 @@ export const mockAlertRecords: AlertRecord[] = [
     apiName: '发送短信通知',
     apiUrl: 'https://api.example.com/message/sms',
     groupName: '消息推送',
+    type: 'timeout',
+    message: '短信服务超时，请检查网关连通性',
     status: 'failed',
     errorMessage: '短信服务超时，请检查网关连通性',
     duration: 5000,
     checkedAt: '2024-06-12T09:05:00Z',
+    triggeredAt: '2024-06-12T09:05:00Z',
     consecutiveFailures: 5
   },
   {
@@ -275,10 +278,13 @@ export const mockAlertRecords: AlertRecord[] = [
     apiName: '创建订单',
     apiUrl: 'https://api.example.com/order/create',
     groupName: '订单系统',
+    type: 'status_code',
+    message: 'Internal Server Error: 数据库连接超时',
     status: 'failed',
     errorMessage: 'Internal Server Error: 数据库连接超时',
     duration: 3500,
     checkedAt: '2024-06-12T09:25:00Z',
+    triggeredAt: '2024-06-12T09:25:00Z',
     remark: 'DBA正在处理，预计10分钟后恢复',
     consecutiveFailures: 3
   },
@@ -288,10 +294,13 @@ export const mockAlertRecords: AlertRecord[] = [
     apiName: '支付回调',
     apiUrl: 'https://api.example.com/payment/callback',
     groupName: '订单系统',
+    type: 'timeout',
+    message: '响应时间超过阈值(2800ms)',
     status: 'warning',
     errorMessage: '响应时间超过阈值(2800ms)',
     duration: 2800,
     checkedAt: '2024-06-12T09:10:00Z',
+    triggeredAt: '2024-06-12T09:10:00Z',
     consecutiveFailures: 1
   }
 ];

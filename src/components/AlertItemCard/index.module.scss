@@ -171,3 +171,39 @@
     transform: scale(0.98);
   }
 }
+
+.handledBtn {
+  background: $color-success;
+  color: $color-text-white;
+
+  &:active {
+    background: $color-success-light;
+    transform: scale(0.98);
+  }
+}
+
+.handledBorder {
+  border-left-color: $color-success;
+  background: linear-gradient(90deg, $color-success-bg 0%, $color-bg-card 30%);
+  opacity: 0.9;
+}
+
+.handledBadge {
+  display: inline-flex;
+  align-items: center;
+  padding: 4rpx 14rpx;
+  background: $color-success-bg;
+  color: $color-success;
+  border-radius: $radius-xs;
+  font-size: $font-size-xs;
+  font-weight: $font-weight-medium;
+  line-height: 1.4;
+  flex-shrink: 0;
+}
+
+.handledTime {
+  display: block;
+  font-size: $font-size-xs;
+  color: $color-text-tertiary;
+  margin-top: 6rpx;
+}

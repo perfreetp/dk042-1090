@@ -410,3 +410,163 @@
     transform: scale(0.98);
   }
 }
+
+.groupSummaryCard {
+  background: $color-bg-card;
+  border-radius: $radius-lg;
+  padding: $spacing-lg;
+  box-shadow: $shadow-card;
+  margin-bottom: $spacing-md;
+  border-left: 8rpx solid $color-primary;
+}
+
+.groupSummaryHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: $spacing-md;
+  padding-bottom: $spacing-md;
+  border-bottom: 1rpx solid $color-divider;
+}
+
+.groupSummaryName {
+  display: block;
+  font-size: $font-size-lg;
+  font-weight: $font-weight-semibold;
+  color: $color-text-primary;
+}
+
+.groupSummaryBusiness {
+  display: inline-block;
+  margin-top: 6rpx;
+  font-size: $font-size-xs;
+  color: $color-text-secondary;
+  background: $color-primary-bg;
+  padding: 4rpx 16rpx;
+  border-radius: $radius-round;
+}
+
+.groupSummaryRate {
+  display: block;
+  font-size: 48rpx;
+  font-weight: $font-weight-bold;
+  line-height: 1.1;
+}
+
+.groupSummaryLabel {
+  display: block;
+  font-size: $font-size-xs;
+  color: $color-text-secondary;
+  margin-top: 4rpx;
+}
+
+.groupSummaryStats {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: $spacing-sm;
+  margin-top: $spacing-md;
+}
+
+.groupSummaryStat {
+  text-align: center;
+}
+
+.groupSummaryStatValue {
+  font-size: $font-size-lg;
+  font-weight: $font-weight-semibold;
+  color: $color-text-primary;
+}
+
+.groupSummaryStatLabel {
+  font-size: $font-size-xs;
+  color: $color-text-secondary;
+  margin-top: 4rpx;
+}
+
+.groupSummaryDetail {
+  margin-top: $spacing-md;
+  padding-top: $spacing-md;
+  border-top: 1rpx solid $color-divider;
+}
+
+.groupSummaryDetailTitle {
+  display: block;
+  font-size: $font-size-sm;
+  font-weight: $font-weight-semibold;
+  color: $color-text-primary;
+  margin-bottom: $spacing-sm;
+}
+
+.groupSummaryApiItem {
+  display: flex;
+  align-items: center;
+  gap: $spacing-md;
+  padding: $spacing-sm 0;
+  border-bottom: 1rpx solid $color-divider;
+
+  &:last-child {
+    border-bottom: none;
+  }
+}
+
+.groupSummaryApiName {
+  display: block;
+  font-size: $font-size-sm;
+  font-weight: $font-weight-medium;
+  color: $color-text-primary;
+  @include text-ellipsis;
+}
+
+.groupSummaryApiUrl {
+  display: block;
+  font-size: $font-size-xs;
+  color: $color-text-tertiary;
+  margin-top: 4rpx;
+  @include text-ellipsis;
+}
+
+.groupSummaryAlertItem {
+  position: relative;
+  padding: $spacing-sm $spacing-md;
+  padding-left: $spacing-md;
+  background: $color-bg-hover;
+  border-radius: $radius-sm;
+  margin-bottom: $spacing-xs;
+
+  &:last-child {
+    margin-bottom: 0;
+  }
+}
+
+.groupSummaryAlertBadge {
+  display: inline-block;
+  font-size: $font-size-xs;
+  color: $color-warning;
+  background: $color-warning-bg;
+  padding: 4rpx 12rpx;
+  border-radius: $radius-xs;
+  margin-bottom: 8rpx;
+}
+
+.groupSummaryAlertMsg {
+  display: block;
+  font-size: $font-size-sm;
+  color: $color-text-primary;
+  line-height: 1.5;
+}
+
+.groupSummaryAlertTime {
+  display: block;
+  font-size: $font-size-xs;
+  color: $color-text-tertiary;
+  margin-top: 4rpx;
+}
+
+.groupSummaryAllGood {
+  padding: $spacing-lg;
+  text-align: center;
+  color: $color-success;
+  background: $color-success-bg;
+  border-radius: $radius-sm;
+  font-size: $font-size-sm;
+}

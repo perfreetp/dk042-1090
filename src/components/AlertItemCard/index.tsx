@@ -8,16 +8,23 @@ import styles from './index.module.scss';
 
 interface AlertItemCardProps {
   alert: AlertRecord;
+  apiName?: string;
+  groupName?: string;
   onRetry?: (alert: AlertRecord) => void;
   onAddRemark?: (alert: AlertRecord) => void;
+  onMarkHandled?: (alert: AlertRecord) => void;
 }
 
-const AlertItemCard: React.FC<AlertItemCardProps> = ({ alert, onRetry, onAddRemark }) => {
+const AlertItemCard: React.FC<AlertItemCardProps> = ({ alert, apiName, groupName, onRetry, onAddRemark, onMarkHandled }) => {
+  const displayApiName = apiName || alert.apiName;
+  const displayGroupName = groupName || alert.groupName;
+
   const getStatusClass = () => {
     return alert.status === 'failed' ? styles.statusFailed : styles.statusWarning;
   };
 
   const getBorderClass = () => {
+    if (alert.handled) return styles.handledBorder;
     return alert.status === 'failed' ? styles.dangerBorder : styles.warningBorder;
   };
 
@@ -25,10 +32,20 @@ const AlertItemCard: React.FC<AlertItemCardProps> = ({ alert, onRetry, onAddRema
     <View className={classnames(styles.card, getBorderClass())}>
       <View className={styles.header}>
         <View className={styles.mainInfo}>
-          <Text className={styles.name}>{alert.apiName}</Text>
+          <View style={{ display: 'flex', alignItems: 'center', gap: '12rpx' }}>
+            <Text className={styles.name}>{displayApiName}</Text>
+            {alert.handled && (
+              <View className={styles.handledBadge}>✅ 已处理</View>
+            )}
+          </View>
           <Text className={styles.group}>
-            {alert.groupName} · {alert.apiUrl}
+            {displayGroupName} · {alert.apiUrl}
           </Text>
+          {alert.handled && alert.handledAt && (
+            <Text className={styles.handledTime}>
+              处理于 {formatDate(alert.handledAt, 'MM-DD HH:mm')}
+            </Text>
+          )}
         </View>
         <View className={classnames(styles.statusBadge, getStatusClass())}>
           {alert.isRetrying ? '重试中...' : getStatusText(alert.status)}
@@ -67,6 +84,14 @@ const AlertItemCard: React.FC<AlertItemCardProps> = ({ alert, onRetry, onAddRema
         >
           {alert.remark ? '修改备注' : '添加备注'}
         </Button>
+        {!alert.handled && (
+          <Button
+            className={classnames(styles.actionBtn, styles.handledBtn)}
+            onClick={() => onMarkHandled?.(alert)}
+          >
+            标记已处理
+          </Button>
+        )}
       </View>
     </View>
   );

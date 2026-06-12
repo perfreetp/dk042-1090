@@ -11,13 +11,17 @@ import {
   copyToClipboard,
   showToast
 } from '@/utils';
-import { InspectionResult, ApiStatus } from '@/types';
+import { InspectionResult, ApiStatus, AlertType } from '@/types';
 import styles from './index.module.scss';
 
+type SummaryTab = 'group' | 'alertType';
+
 const ReportPage: React.FC = () => {
-  const { dailyReport, inspectionResults, apiGroups, apiConfigs, runInspection } = useInspection();
+  const { dailyReport, inspectionResults, apiGroups, apiConfigs, runInspection, alertRecords } = useInspection();
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [filterBusiness, setFilterBusiness] = useState<string>('all');
+  const [summaryTab, setSummaryTab] = useState<SummaryTab>('group');
+  const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
 
   const allBusinessLines = useMemo(() => {
     return ['all', ...new Set(apiGroups.map(g => g.businessLine))];
@@ -58,8 +62,122 @@ const ReportPage: React.FC = () => {
   const handleRefresh = async () => {
     console.log('[ReportPage] Refreshing report');
     showToast('正在生成报告...', 'loading', 1500);
-    await runInspection();
+    await runInspection({});
     showToast('报告已更新', 'success');
+  };
+
+  const toggleGroupExpand = (groupId: string) => {
+    setExpandedGroups(prev => {
+      const next = new Set(prev);
+      if (next.has(groupId)) {
+        next.delete(groupId);
+      } else {
+        next.add(groupId);
+      }
+      return next;
+    });
+  };
+
+  const allResults = useMemo(() => {
+    return dailyReport.results.length > 0 ? dailyReport.results : inspectionResults;
+  }, [dailyReport, inspectionResults]);
+
+  const groupSummaries = useMemo(() => {
+    return apiGroups
+      .filter(group => {
+        if (filterBusiness === 'all') return true;
+        return group.businessLine === filterBusiness;
+      })
+      .map(group => {
+        const groupApiIds = apiConfigs.filter(a => a.groupId === group.id).map(a => a.id);
+        const groupResults = allResults.filter(r => groupApiIds.includes(r.apiId));
+
+        if (groupResults.length === 0) {
+          return {
+            ...group,
+            total: 0,
+            success: 0,
+            failed: 0,
+            warning: 0,
+            successRate: 0,
+            avgDuration: 0,
+            failedApis: [] as InspectionResult[],
+            recentAlerts: [] as typeof alertRecords
+          };
+        }
+
+        const success = groupResults.filter(r => r.status === 'success').length;
+        const failed = groupResults.filter(r => r.status === 'failed').length;
+        const warning = groupResults.filter(r => r.status === 'warning').length;
+        const total = groupResults.length;
+        const successRate = total > 0 ? Math.round((success / total) * 100) : 0;
+        const avgDuration = total > 0 ? Math.round(groupResults.reduce((s, r) => s + r.duration, 0) / total) : 0;
+        const failedApis = groupResults
+          .filter(r => r.status === 'failed' || r.status === 'warning')
+          .sort((a, b) => new Date(b.checkedAt).getTime() - new Date(a.checkedAt).getTime());
+
+        const recentAlerts = alertRecords
+          .filter(a => groupApiIds.includes(a.apiId))
+          .sort((a, b) => new Date(b.triggeredAt).getTime() - new Date(a.triggeredAt).getTime())
+          .slice(0, 3);
+
+        return {
+          ...group,
+          total,
+          success,
+          failed,
+          warning,
+          successRate,
+          avgDuration,
+          failedApis,
+          recentAlerts
+        };
+      });
+  }, [apiGroups, apiConfigs, allResults, alertRecords, filterBusiness]);
+
+  const alertTypeSummaries = useMemo(() => {
+    const filteredAlerts = alertRecords.filter(alert => {
+      if (filterBusiness === 'all') return true;
+      const api = apiConfigs.find(a => a.id === alert.apiId);
+      if (!api) return false;
+      const group = apiGroups.find(g => g.id === api.groupId);
+      return group?.businessLine === filterBusiness;
+    });
+
+    const typeMap: Record<string, number> = {};
+    filteredAlerts.forEach(alert => {
+      const type = alert.type || 'unknown';
+      typeMap[type] = (typeMap[type] || 0) + 1;
+    });
+
+    const alertTypeLabel: Record<AlertType, string> = {
+      status_code: '状态码异常',
+      timeout: '请求超时',
+      field_mismatch: '字段校验失败',
+      network_error: '网络错误',
+      consecutive_failures: '连续失败'
+    };
+
+    return (Object.keys(typeMap) as AlertType[]).map(type => ({
+      type,
+      label: alertTypeLabel[type] || type,
+      count: typeMap[type],
+      recentAlerts: filteredAlerts
+        .filter(a => a.type === type)
+        .sort((a, b) => new Date(b.triggeredAt).getTime() - new Date(a.triggeredAt).getTime())
+        .slice(0, 5)
+    }));
+  }, [alertRecords, apiConfigs, apiGroups, filterBusiness]);
+
+  const getAlertTypeLabel = (type: AlertType) => {
+    const map: Record<AlertType, string> = {
+      status_code: '状态码异常',
+      timeout: '请求超时',
+      field_mismatch: '字段校验失败',
+      network_error: '网络错误',
+      consecutive_failures: '连续失败'
+    };
+    return map[type] || type;
   };
 
   const handleShare = async () => {
@@ -166,6 +284,181 @@ const ReportPage: React.FC = () => {
               </View>
             ))}
           </ScrollView>
+        </View>
+
+        <View className={styles.section}>
+          <View className={styles.sectionHeader}>
+            <Text className={styles.sectionTitle}>📊 汇总视图</Text>
+            <View className={styles.filterTabs}>
+              <View
+                className={classnames(styles.filterTab, {
+                  [styles.filterTabActive]: summaryTab === 'group'
+                })}
+                onClick={() => setSummaryTab('group')}
+              >
+                按接口分组
+              </View>
+              <View
+                className={classnames(styles.filterTab, {
+                  [styles.filterTabActive]: summaryTab === 'alertType'
+                })}
+                onClick={() => setSummaryTab('alertType')}
+              >
+                按告警类型
+              </View>
+            </View>
+          </View>
+
+          {summaryTab === 'group' && (
+            <View>
+              {groupSummaries.map(group => {
+                const isExpanded = expandedGroups.has(group.id);
+                const rateColor = group.successRate >= 95 ? '#00b42a' : group.successRate >= 80 ? '#ff7d00' : '#f53f3f';
+                return (
+                  <View key={group.id} className={styles.groupSummaryCard}>
+                    <View className={styles.groupSummaryHeader} onClick={() => toggleGroupExpand(group.id)}>
+                      <View style={{ flex: 1, minWidth: 0 }}>
+                        <Text className={styles.groupSummaryName}>{group.name}</Text>
+                        <Text className={styles.groupSummaryBusiness}>{group.businessLine}</Text>
+                      </View>
+                      <View style={{ alignItems: 'flex-end' }}>
+                        <Text className={styles.groupSummaryRate} style={{ color: rateColor }}>
+                          {group.total > 0 ? `${group.successRate}%` : '—'}
+                        </Text>
+                        <Text className={styles.groupSummaryLabel}>成功率</Text>
+                      </View>
+                    </View>
+
+                    <View className={styles.groupSummaryStats}>
+                      <View className={styles.groupSummaryStat}>
+                        <Text className={styles.groupSummaryStatValue}>{group.total}</Text>
+                        <Text className={styles.groupSummaryStatLabel}>接口数</Text>
+                      </View>
+                      <View className={styles.groupSummaryStat}>
+                        <Text className={styles.groupSummaryStatValue} style={{ color: '#00b42a' }}>{group.success}</Text>
+                        <Text className={styles.groupSummaryStatLabel}>成功</Text>
+                      </View>
+                      <View className={styles.groupSummaryStat}>
+                        <Text className={styles.groupSummaryStatValue} style={{ color: '#f53f3f' }}>{group.failed + group.warning}</Text>
+                        <Text className={styles.groupSummaryStatLabel}>异常</Text>
+                      </View>
+                      <View className={styles.groupSummaryStat}>
+                        <Text className={styles.groupSummaryStatValue}>{group.total > 0 ? formatDuration(group.avgDuration) : '—'}</Text>
+                        <Text className={styles.groupSummaryStatLabel}>平均耗时</Text>
+                      </View>
+                    </View>
+
+                    {isExpanded && group.total > 0 && (
+                      <View className={styles.groupSummaryDetail}>
+                        {group.failedApis.length > 0 && (
+                          <View>
+                            <Text className={styles.groupSummaryDetailTitle}>🚨 失败/告警接口</Text>
+                            {group.failedApis.map(api => (
+                              <View
+                                key={api.id}
+                                className={styles.groupSummaryApiItem}
+                                onClick={() => Taro.navigateTo({ url: `/pages/debug/index?id=${api.apiId}` })}
+                              >
+                                <View style={{ flex: 1, minWidth: 0 }}>
+                                  <Text className={styles.groupSummaryApiName}>{api.apiName}</Text>
+                                  <Text className={styles.groupSummaryApiUrl}>{api.apiUrl}</Text>
+                                </View>
+                                <View style={{ textAlign: 'right' }}>
+                                  <View className={classnames(styles.resultStatus, getStatusClass(api.status))} style={{ marginBottom: '6rpx' }}>
+                                    {getStatusText(api.status)}
+                                  </View>
+                                  <Text style={{ fontSize: '22rpx', color: '#86909c' }}>{formatDuration(api.duration)}</Text>
+                                </View>
+                              </View>
+                            ))}
+                          </View>
+                        )}
+
+                        {group.recentAlerts.length > 0 && (
+                          <View style={{ marginTop: '20rpx' }}>
+                            <Text className={styles.groupSummaryDetailTitle}>📌 最近异常</Text>
+                            {group.recentAlerts.map(alert => (
+                              <View key={alert.id} className={styles.groupSummaryAlertItem}>
+                                <View className={styles.groupSummaryAlertBadge}>
+                                  {getAlertTypeLabel(alert.type)}
+                                </View>
+                                <Text className={styles.groupSummaryAlertMsg}>{alert.message}</Text>
+                                <Text className={styles.groupSummaryAlertTime}>
+                                  {formatDate(alert.triggeredAt, 'HH:mm')}
+                                </Text>
+                              </View>
+                            ))}
+                          </View>
+                        )}
+
+                        {group.failedApis.length === 0 && group.recentAlerts.length === 0 && (
+                          <View className={styles.groupSummaryAllGood}>
+                            ✅ 该分组所有接口运行正常
+                          </View>
+                        )}
+                      </View>
+                    )}
+                  </View>
+                );
+              })}
+            </View>
+          )}
+
+          {summaryTab === 'alertType' && (
+            <View>
+              {alertTypeSummaries.length > 0 ? (
+                alertTypeSummaries.map(item => {
+                  const isExpanded = expandedGroups.has(`alert_${item.type}`);
+                  return (
+                    <View key={item.type} className={styles.groupSummaryCard}>
+                      <View
+                        className={styles.groupSummaryHeader}
+                        onClick={() => {
+                          setExpandedGroups(prev => {
+                            const next = new Set(prev);
+                            const key = `alert_${item.type}`;
+                            if (next.has(key)) next.delete(key);
+                            else next.add(key);
+                            return next;
+                          });
+                        }}
+                      >
+                        <View style={{ flex: 1, minWidth: 0 }}>
+                          <Text className={styles.groupSummaryName}>⚠️ {item.label}</Text>
+                          <Text className={styles.groupSummaryBusiness}>告警类型统计</Text>
+                        </View>
+                        <View style={{ alignItems: 'flex-end' }}>
+                          <Text className={styles.groupSummaryRate} style={{ color: '#f53f3f' }}>{item.count}</Text>
+                          <Text className={styles.groupSummaryLabel}>次</Text>
+                        </View>
+                      </View>
+                      {isExpanded && (
+                        <View className={styles.groupSummaryDetail}>
+                          {item.recentAlerts.map(alert => (
+                            <View
+                              key={alert.id}
+                              className={styles.groupSummaryAlertItem}
+                              onClick={() => Taro.navigateTo({ url: `/pages/debug/index?id=${alert.apiId}` })}
+                            >
+                              <Text className={styles.groupSummaryAlertMsg}>{alert.message}</Text>
+                              <Text className={styles.groupSummaryAlertTime}>
+                                {formatDate(alert.triggeredAt, 'MM-DD HH:mm')}
+                              </Text>
+                            </View>
+                          ))}
+                        </View>
+                      )}
+                    </View>
+                  );
+                })
+              ) : (
+                <View className={styles.emptyState}>
+                  <Text className={styles.emptyIcon}>🎉</Text>
+                  <Text className={styles.emptyTitle}>暂无告警记录</Text>
+                </View>
+              )}
+            </View>
+          )}
         </View>
 
         <View className={styles.section}>

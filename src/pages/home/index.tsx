@@ -39,13 +39,13 @@ const HomePage: React.FC = () => {
     }
     console.log('[HomePage] Starting full inspection');
     showToast('开始巡检...', 'loading', 1000);
-    await runInspection();
+    await runInspection({});
     showToast('巡检完成', 'success');
   };
 
   const handleInspectApi = async (api: ApiConfig) => {
     console.log('[HomePage] Inspecting API:', api.id);
-    await runInspection(api.id);
+    await runInspection({ apiId: api.id });
     showToast(`${api.name} 巡检完成`, 'success');
   };
 
