@@ -1,0 +1,193 @@
+@use '@/styles/variables.scss' as *;
+
+.card {
+  background: $color-bg-card;
+  border-radius: $radius-lg;
+  padding: $spacing-lg;
+  box-shadow: $shadow-card;
+  margin-bottom: $spacing-md;
+  transition: all $transition-base;
+  position: relative;
+  overflow: hidden;
+
+  &:active {
+    transform: scale(0.99);
+  }
+}
+
+.dangerBorder {
+  border-left: 8rpx solid $color-error;
+}
+
+.warningBorder {
+  border-left: 8rpx solid $color-warning;
+}
+
+.successBorder {
+  border-left: 8rpx solid $color-success;
+}
+
+.header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: $spacing-md;
+}
+
+.mainInfo {
+  flex: 1;
+  min-width: 0;
+}
+
+.name {
+  font-size: $font-size-lg;
+  font-weight: $font-weight-semibold;
+  color: $color-text-primary;
+  @include text-ellipsis;
+}
+
+.url {
+  font-size: $font-size-sm;
+  color: $color-text-tertiary;
+  margin-top: $spacing-xs;
+  @include text-ellipsis;
+}
+
+.meta {
+  display: flex;
+  align-items: center;
+  gap: $spacing-sm;
+  margin-top: $spacing-md;
+  flex-wrap: wrap;
+}
+
+.tag {
+  display: inline-flex;
+  align-items: center;
+  padding: 4rpx 16rpx;
+  border-radius: $radius-xs;
+  font-size: $font-size-xs;
+  font-weight: $font-weight-medium;
+  line-height: 1.5;
+  white-space: nowrap;
+}
+
+.methodGet {
+  background: $color-success-bg;
+  color: $color-success;
+}
+
+.methodPost {
+  background: $color-primary-bg;
+  color: $color-primary;
+}
+
+.methodPut {
+  background: $color-warning-bg;
+  color: $color-warning;
+}
+
+.methodDelete {
+  background: $color-danger-bg;
+  color: $color-error;
+}
+
+.groupTag {
+  background: $color-bg-hover;
+  color: $color-text-secondary;
+}
+
+.statusBadge {
+  display: inline-flex;
+  align-items: center;
+  padding: 8rpx 20rpx;
+  border-radius: $radius-round;
+  font-size: $font-size-xs;
+  font-weight: $font-weight-medium;
+}
+
+.statusSuccess {
+  background: $color-success-bg;
+  color: $color-success;
+}
+
+.statusFailed {
+  background: $color-danger-bg;
+  color: $color-error;
+}
+
+.statusWarning {
+  background: $color-warning-bg;
+  color: $color-warning;
+}
+
+.statusPending {
+  background: $color-primary-bg;
+  color: $color-primary;
+}
+
+.statusUnknown {
+  background: $color-bg-hover;
+  color: $color-text-tertiary;
+}
+
+.footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: $spacing-md;
+  padding-top: $spacing-md;
+  border-top: 1rpx solid $color-divider;
+}
+
+.footerLeft {
+  display: flex;
+  align-items: center;
+  gap: $spacing-lg;
+}
+
+.footerItem {
+  display: flex;
+  align-items: center;
+  gap: 8rpx;
+  font-size: $font-size-sm;
+  color: $color-text-secondary;
+}
+
+.dangerBadge {
+  display: inline-flex;
+  align-items: center;
+  padding: 4rpx 16rpx;
+  border-radius: $radius-xs;
+  background: $color-error;
+  color: $color-text-white;
+  font-size: $font-size-xs;
+  font-weight: $font-weight-semibold;
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.7;
+  }
+}
+
+.inspectBtn {
+  @include button-reset;
+  height: $button-height-sm;
+  padding: 0 $spacing-lg;
+  background: $color-primary;
+  color: $color-text-white;
+  font-size: $font-size-sm;
+  font-weight: $font-weight-medium;
+  border-radius: $radius-button;
+  transition: all $transition-base;
+
+  &:active {
+    background: $color-primary-dark;
+    transform: scale(0.98);
+  }
+}

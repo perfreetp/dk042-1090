@@ -1,0 +1,81 @@
+@use '@/styles/variables.scss' as *;
+
+.card {
+  background: $color-bg-card;
+  border-radius: $radius-lg;
+  padding: $spacing-lg;
+  box-shadow: $shadow-card;
+  display: flex;
+  align-items: center;
+  gap: $spacing-md;
+  transition: all $transition-base;
+
+  &:active {
+    transform: scale(0.98);
+  }
+}
+
+.iconWrapper {
+  width: 80rpx;
+  height: 80rpx;
+  border-radius: $radius-md;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.success {
+  background: $color-success-bg;
+}
+
+.error {
+  background: $color-danger-bg;
+}
+
+.warning {
+  background: $color-warning-bg;
+}
+
+.info {
+  background: $color-primary-bg;
+}
+
+.iconText {
+  font-size: 36rpx;
+  font-weight: $font-weight-bold;
+}
+
+.successText {
+  color: $color-success;
+}
+
+.errorText {
+  color: $color-error;
+}
+
+.warningText {
+  color: $color-warning;
+}
+
+.infoText {
+  color: $color-primary;
+}
+
+.content {
+  flex: 1;
+  min-width: 0;
+}
+
+.value {
+  font-size: $font-size-xl;
+  font-weight: $font-weight-semibold;
+  color: $color-text-primary;
+  line-height: 1.2;
+}
+
+.label {
+  font-size: $font-size-sm;
+  color: $color-text-secondary;
+  margin-top: $spacing-xs;
+}

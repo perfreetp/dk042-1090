@@ -1,0 +1,331 @@
+@use '@/styles/variables.scss' as *;
+
+.page {
+  min-height: 100vh;
+  padding-bottom: 140rpx;
+}
+
+.apiHeader {
+  background: $color-primary-gradient;
+  padding: $spacing-xl $page-padding;
+  margin: 0 (-$page-padding) $spacing-lg;
+  border-radius: 0 0 $radius-xl $radius-xl;
+  color: $color-text-white;
+}
+
+.apiName {
+  font-size: $font-size-xxl;
+  font-weight: $font-weight-semibold;
+  line-height: 1.2;
+}
+
+.apiUrl {
+  font-size: $font-size-sm;
+  opacity: 0.9;
+  margin-top: $spacing-xs;
+  word-break: break-all;
+  line-height: 1.4;
+}
+
+.apiMeta {
+  display: flex;
+  gap: $spacing-md;
+  margin-top: $spacing-lg;
+  flex-wrap: wrap;
+}
+
+.metaTag {
+  display: inline-flex;
+  align-items: center;
+  padding: 8rpx 20rpx;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: $radius-round;
+  font-size: $font-size-xs;
+  backdrop-filter: blur(10px);
+}
+
+.card {
+  background: $color-bg-card;
+  border-radius: $radius-lg;
+  padding: $spacing-lg;
+  box-shadow: $shadow-card;
+  margin-bottom: $spacing-md;
+}
+
+.cardTitle {
+  font-size: $font-size-lg;
+  font-weight: $font-weight-semibold;
+  color: $color-text-primary;
+  margin-bottom: $spacing-md;
+  display: flex;
+  align-items: center;
+  gap: $spacing-sm;
+}
+
+.formRow {
+  display: flex;
+  align-items: center;
+  padding: $spacing-md 0;
+  border-bottom: 1rpx solid $color-divider;
+
+  &:last-child {
+    border-bottom: none;
+  }
+}
+
+.formLabel {
+  width: 160rpx;
+  font-size: $font-size-md;
+  color: $color-text-secondary;
+  flex-shrink: 0;
+}
+
+.formInput {
+  flex: 1;
+  font-size: $font-size-md;
+  color: $color-text-primary;
+  background: transparent;
+}
+
+.selectWrapper {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: $spacing-sm;
+}
+
+.optionBtn {
+  @include button-reset;
+  padding: 8rpx 20rpx;
+  border-radius: $radius-sm;
+  font-size: $font-size-sm;
+  background: $color-bg-hover;
+  color: $color-text-secondary;
+  transition: all $transition-base;
+
+  &:active {
+    background: $color-border;
+  }
+}
+
+.optionActive {
+  background: $color-primary-bg;
+  color: $color-primary;
+  font-weight: $font-weight-medium;
+}
+
+.paramItem {
+  display: flex;
+  align-items: center;
+  gap: $spacing-sm;
+  padding: $spacing-sm 0;
+  border-bottom: 1rpx solid $color-divider;
+
+  &:last-child {
+    border-bottom: none;
+  }
+}
+
+.paramInput {
+  flex: 1;
+  height: 64rpx;
+  background: $color-bg-hover;
+  border-radius: $radius-sm;
+  padding: 0 $spacing-md;
+  font-size: $font-size-sm;
+  color: $color-text-primary;
+  box-sizing: border-box;
+}
+
+.paramKey {
+  flex: 1;
+}
+
+.paramValue {
+  flex: 1.2;
+}
+
+.paramType {
+  @include button-reset;
+  padding: 8rpx 16rpx;
+  border-radius: $radius-xs;
+  font-size: $font-size-xs;
+  background: $color-primary-bg;
+  color: $color-primary;
+}
+
+.removeBtn {
+  @include button-reset;
+  width: 48rpx;
+  height: 48rpx;
+  border-radius: $radius-round;
+  background: $color-danger-bg;
+  color: $color-error;
+  font-size: $font-size-sm;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+}
+
+.addParamBtn {
+  @include button-reset;
+  width: 100%;
+  height: 72rpx;
+  border: 2rpx dashed $color-border;
+  border-radius: $radius-md;
+  background: transparent;
+  color: $color-text-tertiary;
+  font-size: $font-size-md;
+  margin-top: $spacing-md;
+  transition: all $transition-base;
+
+  &:active {
+    background: $color-bg-hover;
+    color: $color-primary;
+    border-color: $color-primary;
+  }
+}
+
+.resultCard {
+  background: $color-bg-card;
+  border-radius: $radius-lg;
+  padding: $spacing-lg;
+  box-shadow: $shadow-card;
+  margin-bottom: $spacing-md;
+  border-left: 8rpx solid;
+}
+
+.resultSuccess {
+  border-left-color: $color-success;
+}
+
+.resultFailed {
+  border-left-color: $color-error;
+}
+
+.resultWarning {
+  border-left-color: $color-warning;
+}
+
+.resultHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: $spacing-md;
+}
+
+.resultStatus {
+  display: inline-flex;
+  align-items: center;
+  padding: 8rpx 24rpx;
+  border-radius: $radius-round;
+  font-size: $font-size-sm;
+  font-weight: $font-weight-medium;
+}
+
+.statusSuccess {
+  background: $color-success-bg;
+  color: $color-success;
+}
+
+.statusFailed {
+  background: $color-danger-bg;
+  color: $color-error;
+}
+
+.statusWarning {
+  background: $color-warning-bg;
+  color: $color-warning;
+}
+
+.resultTime {
+  font-size: $font-size-sm;
+  color: $color-text-tertiary;
+}
+
+.resultDetail {
+  background: $color-bg-hover;
+  border-radius: $radius-sm;
+  padding: $spacing-md;
+  font-size: $font-size-sm;
+  color: $color-text-secondary;
+  line-height: 1.6;
+  word-break: break-all;
+}
+
+.validationItem {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: $spacing-sm 0;
+  border-bottom: 1rpx solid $color-divider;
+
+  &:last-child {
+    border-bottom: none;
+  }
+}
+
+.validationField {
+  font-size: $font-size-md;
+  color: $color-text-primary;
+}
+
+.validationResult {
+  display: inline-flex;
+  align-items: center;
+  gap: 8rpx;
+  font-size: $font-size-sm;
+}
+
+.validPass {
+  color: $color-success;
+}
+
+.validFail {
+  color: $color-error;
+}
+
+.bottomBar {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding: $spacing-md $page-padding;
+  padding-bottom: calc(#{$spacing-md} + env(safe-area-inset-bottom));
+  background: $color-bg-card;
+  box-shadow: 0 -4rpx 16rpx rgba(0, 0, 0, 0.08);
+  display: flex;
+  gap: $spacing-md;
+}
+
+.btn {
+  @include button-reset;
+  flex: 1;
+  height: $button-height-lg;
+  border-radius: $radius-button;
+  font-size: $font-size-lg;
+  font-weight: $font-weight-medium;
+  transition: all $transition-base;
+}
+
+.btnPrimary {
+  background: $color-primary-gradient;
+  color: $color-text-white;
+  box-shadow: 0 4rpx 16rpx rgba(22, 93, 255, 0.3);
+
+  &:active {
+    transform: scale(0.98);
+    opacity: 0.9;
+  }
+}
+
+.btnSecondary {
+  background: $color-bg-hover;
+  color: $color-text-primary;
+
+  &:active {
+    background: $color-border;
+    transform: scale(0.98);
+  }
+}

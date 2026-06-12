@@ -1,0 +1,186 @@
+@use '@/styles/variables.scss' as *;
+
+.page {
+  min-height: 100vh;
+}
+
+.header {
+  background: $color-primary-gradient;
+  padding: $spacing-lg $page-padding;
+  margin: 0 (-$page-padding) $spacing-lg;
+  border-radius: 0 0 $radius-xl $radius-xl;
+  color: $color-text-white;
+}
+
+.title {
+  font-size: $font-size-xxl;
+  font-weight: $font-weight-semibold;
+}
+
+.subtitle {
+  font-size: $font-size-sm;
+  opacity: 0.85;
+  margin-top: $spacing-xs;
+}
+
+.searchBar {
+  margin-top: $spacing-md;
+  display: flex;
+  align-items: center;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: $radius-button;
+  padding: 0 $spacing-lg;
+  height: $button-height-md;
+  backdrop-filter: blur(10px);
+}
+
+.searchInput {
+  flex: 1;
+  color: $color-text-white;
+  font-size: $font-size-md;
+  background: transparent;
+}
+
+.groupTabs {
+  display: flex;
+  gap: $spacing-sm;
+  margin-bottom: $spacing-lg;
+  overflow-x: auto;
+  white-space: nowrap;
+  margin-left: -$page-padding;
+  margin-right: -$page-padding;
+  padding-left: $page-padding;
+  padding-right: $page-padding;
+  width: calc(100% + #{$page-padding} * 2);
+}
+
+.groupTab {
+  display: inline-flex;
+  align-items: center;
+  padding: 12rpx 28rpx;
+  background: $color-bg-card;
+  border-radius: $radius-button;
+  font-size: $font-size-sm;
+  color: $color-text-secondary;
+  box-shadow: $shadow-card;
+  margin-right: $spacing-sm;
+  transition: all $transition-base;
+  white-space: nowrap;
+}
+
+.groupTabActive {
+  background: $color-primary;
+  color: $color-text-white;
+}
+
+.groupCard {
+  background: $color-bg-card;
+  border-radius: $radius-lg;
+  padding: $spacing-lg;
+  box-shadow: $shadow-card;
+  margin-bottom: $spacing-md;
+}
+
+.groupHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: $spacing-md;
+}
+
+.groupInfo {
+  flex: 1;
+  min-width: 0;
+}
+
+.groupName {
+  font-size: $font-size-lg;
+  font-weight: $font-weight-semibold;
+  color: $color-text-primary;
+}
+
+.groupDesc {
+  font-size: $font-size-sm;
+  color: $color-text-tertiary;
+  margin-top: 4rpx;
+}
+
+.groupStats {
+  display: flex;
+  align-items: center;
+  gap: $spacing-lg;
+}
+
+.groupStat {
+  text-align: center;
+}
+
+.groupStatValue {
+  font-size: $font-size-xl;
+  font-weight: $font-weight-semibold;
+  color: $color-primary;
+}
+
+.groupStatLabel {
+  font-size: $font-size-xs;
+  color: $color-text-tertiary;
+  margin-top: 4rpx;
+}
+
+.successRate {
+  color: $color-success;
+}
+
+.warnRate {
+  color: $color-warning;
+}
+
+.errorRate {
+  color: $color-error;
+}
+
+.toggleBtn {
+  @include button-reset;
+  padding: 0 $spacing-md;
+  height: 48rpx;
+  background: $color-bg-hover;
+  color: $color-text-secondary;
+  font-size: $font-size-xs;
+  border-radius: $radius-sm;
+  transition: all $transition-base;
+
+  &:active {
+    background: $color-border;
+  }
+}
+
+.apiList {
+  margin-top: $spacing-md;
+  padding-top: $spacing-md;
+  border-top: 1rpx solid $color-divider;
+}
+
+.emptyState {
+  background: $color-bg-card;
+  border-radius: $radius-lg;
+  padding: $spacing-xl * 2;
+  text-align: center;
+  margin-top: $spacing-xl;
+}
+
+.emptyIcon {
+  font-size: 80rpx;
+  margin-bottom: $spacing-md;
+}
+
+.emptyTitle {
+  font-size: $font-size-lg;
+  font-weight: $font-weight-semibold;
+  color: $color-text-primary;
+  margin-bottom: $spacing-xs;
+}
+
+.emptyDesc {
+  font-size: $font-size-md;
+  color: $color-text-tertiary;
+}

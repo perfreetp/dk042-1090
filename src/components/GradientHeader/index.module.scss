@@ -1,0 +1,56 @@
+@use '@/styles/variables.scss' as *;
+
+.header {
+  background: $color-primary-gradient;
+  padding: $spacing-xl $page-padding $spacing-lg;
+  border-radius: 0 0 $radius-xl $radius-xl;
+  margin: 0 (-$page-padding) $spacing-lg;
+  color: $color-text-white;
+}
+
+.title {
+  font-size: $font-size-xxl;
+  font-weight: $font-weight-semibold;
+  line-height: 1.2;
+}
+
+.subtitle {
+  font-size: $font-size-sm;
+  opacity: 0.85;
+  margin-top: $spacing-xs;
+}
+
+.actions {
+  display: flex;
+  gap: $spacing-md;
+  margin-top: $spacing-lg;
+}
+
+.actionBtn {
+  @include button-reset;
+  flex: 1;
+  height: $button-height-md;
+  background: rgba(255, 255, 255, 0.2);
+  border: 1rpx solid rgba(255, 255, 255, 0.3);
+  border-radius: $radius-button;
+  color: $color-text-white;
+  font-size: $font-size-md;
+  font-weight: $font-weight-medium;
+  backdrop-filter: blur(10px);
+  transition: all $transition-base;
+
+  &:active {
+    background: rgba(255, 255, 255, 0.3);
+    transform: scale(0.98);
+  }
+}
+
+.primaryBtn {
+  background: $color-text-white;
+  color: $color-primary;
+  border-color: transparent;
+
+  &:active {
+    background: rgba(255, 255, 255, 0.9);
+  }
+}
