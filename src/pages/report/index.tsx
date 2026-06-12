@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import { View, Text, ScrollView } from '@tarojs/components';
 import Taro from '@tarojs/taro';
 import classnames from 'classnames';
@@ -15,7 +15,7 @@ import { InspectionResult, ApiStatus } from '@/types';
 import styles from './index.module.scss';
 
 const ReportPage: React.FC = () => {
-  const { dailyReport, inspectionResults, apiGroups, runInspection } = useInspection();
+  const { dailyReport, inspectionResults, apiGroups, apiConfigs, runInspection } = useInspection();
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [filterBusiness, setFilterBusiness] = useState<string>('all');
 
@@ -23,32 +23,37 @@ const ReportPage: React.FC = () => {
     return ['all', ...new Set(apiGroups.map(g => g.businessLine))];
   }, [apiGroups]);
 
+  const getBusinessLineByApiId = useCallback((apiId: string): string => {
+    const api = apiConfigs.find(a => a.id === apiId);
+    if (!api) return '';
+    const group = apiGroups.find(g => g.id === api.groupId);
+    return group?.businessLine || '';
+  }, [apiConfigs, apiGroups]);
+
+  const filterByBusinessLine = useCallback((results: InspectionResult[]): InspectionResult[] => {
+    if (filterBusiness === 'all') return results;
+    return results.filter(r => getBusinessLineByApiId(r.apiId) === filterBusiness);
+  }, [filterBusiness, getBusinessLineByApiId]);
+
   const filteredResults = useMemo(() => {
     let results = dailyReport.results.length > 0 ? dailyReport.results : inspectionResults;
+
+    results = filterByBusinessLine(results);
 
     if (filterStatus !== 'all') {
       results = results.filter(r => r.status === filterStatus);
     }
 
-    if (filterBusiness !== 'all') {
-      const groupNames = apiGroups
-        .filter(g => g.businessLine === filterBusiness)
-        .map(g => g.name);
-      results = results.filter(r => {
-        const apiConfig = inspectionResults.find(ir => ir.apiId === r.apiId);
-        return true;
-      });
-    }
-
     return results;
-  }, [dailyReport, inspectionResults, filterStatus, filterBusiness, apiGroups]);
+  }, [dailyReport, inspectionResults, filterStatus, filterByBusinessLine]);
 
   const durationRanking = useMemo(() => {
-    const results = dailyReport.results.length > 0 ? dailyReport.results : inspectionResults;
+    let results = dailyReport.results.length > 0 ? dailyReport.results : inspectionResults;
+    results = filterByBusinessLine(results);
     return [...results]
       .sort((a, b) => b.duration - a.duration)
       .slice(0, 5);
-  }, [dailyReport, inspectionResults]);
+  }, [dailyReport, inspectionResults, filterByBusinessLine]);
 
   const handleRefresh = async () => {
     console.log('[ReportPage] Refreshing report');

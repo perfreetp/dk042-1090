@@ -1,4 +1,5 @@
-import React, { createContext, useContext, useState, useCallback, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useCallback, ReactNode, useEffect } from 'react';
+import Taro from '@tarojs/taro';
 import { ApiConfig, ApiGroup, InspectionResult, AlertRecord, InspectionReport, ApiStatus } from '@/types';
 import {
   mockApiConfigs,
@@ -8,6 +9,33 @@ import {
   mockDailyReport
 } from '@/data/mock';
 
+const STORAGE_KEYS = {
+  API_CONFIGS: 'api_inspection_configs',
+  INSPECTION_RESULTS: 'api_inspection_results',
+  ALERT_RECORDS: 'api_inspection_alerts',
+  DAILY_REPORT: 'api_inspection_report'
+};
+
+const loadFromStorage = <T,>(key: string, defaultValue: T): T => {
+  try {
+    const data = Taro.getStorageSync(key);
+    if (data) {
+      return JSON.parse(data) as T;
+    }
+  } catch (e) {
+    console.error('[Storage] Failed to load', key, e);
+  }
+  return defaultValue;
+};
+
+const saveToStorage = <T,>(key: string, data: T): void => {
+  try {
+    Taro.setStorageSync(key, JSON.stringify(data));
+  } catch (e) {
+    console.error('[Storage] Failed to save', key, e);
+  }
+};
+
 interface InspectionContextValue {
   apiGroups: ApiGroup[];
   apiConfigs: ApiConfig[];
@@ -15,10 +43,12 @@ interface InspectionContextValue {
   alertRecords: AlertRecord[];
   dailyReport: InspectionReport;
   inspecting: boolean;
-  runInspection: (apiId?: string) => Promise<void>;
+  runInspection: (apiId?: string) => Promise<InspectionResult[]>;
   retryAlert: (alertId: string) => Promise<void>;
   updateAlertRemark: (alertId: string, remark: string) => void;
   updateApiConfig: (config: ApiConfig) => void;
+  addApiConfig: (config: Omit<ApiConfig, 'id' | 'createdAt' | 'consecutiveFailures'>) => void;
+  deleteApiConfig: (apiId: string) => void;
   getApiById: (id: string) => ApiConfig | undefined;
 }
 
@@ -26,11 +56,35 @@ const InspectionContext = createContext<InspectionContextValue | null>(null);
 
 export const InspectionProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [apiGroups] = useState<ApiGroup[]>(mockApiGroups);
-  const [apiConfigs, setApiConfigs] = useState<ApiConfig[]>(mockApiConfigs);
-  const [inspectionResults, setInspectionResults] = useState<InspectionResult[]>(mockInspectionResults);
-  const [alertRecords, setAlertRecords] = useState<AlertRecord[]>(mockAlertRecords);
-  const [dailyReport, setDailyReport] = useState<InspectionReport>(mockDailyReport);
+  const [apiConfigs, setApiConfigs] = useState<ApiConfig[]>(() =>
+    loadFromStorage(STORAGE_KEYS.API_CONFIGS, mockApiConfigs)
+  );
+  const [inspectionResults, setInspectionResults] = useState<InspectionResult[]>(() =>
+    loadFromStorage(STORAGE_KEYS.INSPECTION_RESULTS, mockInspectionResults)
+  );
+  const [alertRecords, setAlertRecords] = useState<AlertRecord[]>(() =>
+    loadFromStorage(STORAGE_KEYS.ALERT_RECORDS, mockAlertRecords)
+  );
+  const [dailyReport, setDailyReport] = useState<InspectionReport>(() =>
+    loadFromStorage(STORAGE_KEYS.DAILY_REPORT, mockDailyReport)
+  );
   const [inspecting, setInspecting] = useState(false);
+
+  useEffect(() => {
+    saveToStorage(STORAGE_KEYS.API_CONFIGS, apiConfigs);
+  }, [apiConfigs]);
+
+  useEffect(() => {
+    saveToStorage(STORAGE_KEYS.INSPECTION_RESULTS, inspectionResults);
+  }, [inspectionResults]);
+
+  useEffect(() => {
+    saveToStorage(STORAGE_KEYS.ALERT_RECORDS, alertRecords);
+  }, [alertRecords]);
+
+  useEffect(() => {
+    saveToStorage(STORAGE_KEYS.DAILY_REPORT, dailyReport);
+  }, [dailyReport]);
 
   const simulateInspection = useCallback((api: ApiConfig): InspectionResult => {
     const random = Math.random();
@@ -76,7 +130,7 @@ export const InspectionProvider: React.FC<{ children: ReactNode }> = ({ children
     };
   }, []);
 
-  const runInspection = useCallback(async (apiId?: string) => {
+  const runInspection = useCallback(async (apiId?: string): Promise<InspectionResult[]> => {
     setInspecting(true);
     console.log('[Inspection] Starting inspection', apiId ? `for API: ${apiId}` : 'for all APIs');
 
@@ -85,12 +139,29 @@ export const InspectionProvider: React.FC<{ children: ReactNode }> = ({ children
     const targetApis = apiId ? apiConfigs.filter(a => a.id === apiId) : apiConfigs;
     const newResults: InspectionResult[] = [];
     const newAlerts: AlertRecord[] = [];
+    const updatedConfigs: ApiConfig[] = [...apiConfigs];
 
     targetApis.forEach(api => {
       const result = simulateInspection(api);
       newResults.push(result);
 
+      const apiIndex = updatedConfigs.findIndex(a => a.id === api.id);
+      if (apiIndex !== -1) {
+        const newConsecutiveFailures = result.status === 'failed'
+          ? api.consecutiveFailures + 1
+          : (result.status === 'success' ? 0 : api.consecutiveFailures);
+
+        updatedConfigs[apiIndex] = {
+          ...updatedConfigs[apiIndex],
+          lastStatus: result.status,
+          lastDuration: result.duration,
+          lastCheckedAt: result.checkedAt,
+          consecutiveFailures: newConsecutiveFailures
+        };
+      }
+
       if (result.status === 'failed' || result.status === 'warning') {
+        const apiConfig = updatedConfigs.find(a => a.id === api.id);
         newAlerts.push({
           id: `alert-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
           apiId: api.id,
@@ -101,11 +172,12 @@ export const InspectionProvider: React.FC<{ children: ReactNode }> = ({ children
           errorMessage: result.errorMessage || '响应时间超过阈值',
           duration: result.duration,
           checkedAt: result.checkedAt,
-          consecutiveFailures: result.status === 'failed' ? api.consecutiveFailures + 1 : api.consecutiveFailures
+          consecutiveFailures: apiConfig?.consecutiveFailures || 0
         });
       }
     });
 
+    setApiConfigs(updatedConfigs);
     setInspectionResults(prev => [...newResults, ...prev].slice(0, 50));
     setAlertRecords(prev => [...newAlerts, ...prev].slice(0, 30));
 
@@ -132,6 +204,7 @@ export const InspectionProvider: React.FC<{ children: ReactNode }> = ({ children
 
     console.log('[Inspection] Completed', newResults.length, 'results');
     setInspecting(false);
+    return newResults;
   }, [apiConfigs, simulateInspection]);
 
   const retryAlert = useCallback(async (alertId: string) => {
@@ -148,6 +221,25 @@ export const InspectionProvider: React.FC<{ children: ReactNode }> = ({ children
       if (api) {
         const result = simulateInspection({ ...api, consecutiveFailures: 0 });
         setInspectionResults(prev => [result, ...prev]);
+
+        const apiIndex = apiConfigs.findIndex(a => a.id === api.id);
+        if (apiIndex !== -1) {
+          const newConsecutiveFailures = result.status === 'failed'
+            ? api.consecutiveFailures + 1
+            : (result.status === 'success' ? 0 : api.consecutiveFailures);
+
+          setApiConfigs(prev => {
+            const next = [...prev];
+            next[apiIndex] = {
+              ...next[apiIndex],
+              lastStatus: result.status,
+              lastDuration: result.duration,
+              lastCheckedAt: result.checkedAt,
+              consecutiveFailures: newConsecutiveFailures
+            };
+            return next;
+          });
+        }
 
         if (result.status === 'success') {
           setAlertRecords(prev => prev.filter(a => a.id !== alertId));
@@ -172,6 +264,24 @@ export const InspectionProvider: React.FC<{ children: ReactNode }> = ({ children
     setApiConfigs(prev => prev.map(a => a.id === config.id ? config : a));
   }, []);
 
+  const addApiConfig = useCallback((config: Omit<ApiConfig, 'id' | 'createdAt' | 'consecutiveFailures'>) => {
+    const newConfig: ApiConfig = {
+      ...config,
+      id: `api-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      createdAt: new Date().toISOString(),
+      consecutiveFailures: 0
+    };
+    console.log('[Inspection] Adding new API config:', newConfig.id);
+    setApiConfigs(prev => [...prev, newConfig]);
+  }, []);
+
+  const deleteApiConfig = useCallback((apiId: string) => {
+    console.log('[Inspection] Deleting API config:', apiId);
+    setApiConfigs(prev => prev.filter(a => a.id !== apiId));
+    setInspectionResults(prev => prev.filter(r => r.apiId !== apiId));
+    setAlertRecords(prev => prev.filter(a => a.apiId !== apiId));
+  }, []);
+
   const getApiById = useCallback((id: string) => {
     return apiConfigs.find(a => a.id === id);
   }, [apiConfigs]);
@@ -189,6 +299,8 @@ export const InspectionProvider: React.FC<{ children: ReactNode }> = ({ children
         retryAlert,
         updateAlertRemark,
         updateApiConfig,
+        addApiConfig,
+        deleteApiConfig,
         getApiById
       }}
     >

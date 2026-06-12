@@ -39,10 +39,11 @@ const DebugPage: React.FC = () => {
   const handleRunInspect = async () => {
     console.log('[DebugPage] Running inspection for:', api.id);
     showToast('开始巡检...', 'loading', 1000);
-    await runInspection(api.id);
-    const result = inspectionResults.find(r => r.apiId === api.id);
-    if (result) {
-      setLastResult(result);
+    const newResults = await runInspection(api.id);
+    const latestResult = newResults.find(r => r.apiId === api.id);
+    if (latestResult) {
+      console.log('[DebugPage] Updating lastResult with new inspection:', latestResult.status, latestResult.duration);
+      setLastResult(latestResult);
     }
     showToast('巡检完成', 'success');
   };
